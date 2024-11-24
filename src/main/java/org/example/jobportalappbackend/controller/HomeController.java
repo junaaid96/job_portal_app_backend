@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-//@Controller // @Controller is used to define a controller and has methods to return response in view or data type. if you use @Controller, you need to use @ResponseBody to return data in the response body. otherwise, it will try to find a view with the name returned by the method.
-@CrossOrigin(origins = "http://localhost:3000") // @CrossOrigin is used to handle the request from a different origin.
 public class HomeController {
     @Autowired
     private JobService jobService;
