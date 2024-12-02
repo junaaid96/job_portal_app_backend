@@ -42,4 +42,7 @@ public class JobPost {
     )
     @Column(name = "technology")
     private List<String> postTechStack;
+
+    @Column(name = "added_by", length = 100)
+    private String addedBy;
 }

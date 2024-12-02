@@ -35,16 +35,16 @@ public class JobService {
         jobRepository.deleteById(postId);
     }
 
-    public void loadData() {
-        List<JobPost> jobPosts = new ArrayList<>(Arrays.asList(
-                new JobPost(1, "Java Developer", "We are looking for a skilled Java Developer with experience in Spring and Hibernate frameworks. The ideal candidate will have a strong understanding of Java programming and be able to work on complex projects.", 2, Arrays.asList("Java", "Spring", "Hibernate")),
-                new JobPost(2, "Python Developer", "Join our team as a Python Developer. You should have experience with Django and Flask frameworks. The role involves developing and maintaining web applications using Python.", 2, Arrays.asList("Python", "Django", "Flask")),
-                new JobPost(3, "JavaScript Developer", "We need a JavaScript Developer proficient in React and Angular. The candidate will be responsible for building dynamic and responsive web applications using JavaScript.", 2, Arrays.asList("JavaScript", "React", "Angular")),
-                new JobPost(4, "Rust Developer", "We are looking for a skilled Rust Developer with experience in Actix and Rocket frameworks. The ideal candidate will have a strong understanding of Rust programming and be able to work on complex projects.", 2, Arrays.asList("Rust", "Actix", "Rocket")),
-                new JobPost(5, "Go Developer", "Join our team as a Go Developer. You should have experience with Gin and Echo frameworks. The role involves developing and maintaining web applications using Go.", 2, Arrays.asList("Go", "Gin", "Echo"))));
-
-        jobRepository.saveAll(jobPosts);
-    }
+//    public void loadData() {
+//        List<JobPost> jobPosts = new ArrayList<>(Arrays.asList(
+//                new JobPost(1, "Java Developer", "We are looking for a skilled Java Developer with experience in Spring and Hibernate frameworks. The ideal candidate will have a strong understanding of Java programming and be able to work on complex projects.", 2, Arrays.asList("Java", "Spring", "Hibernate")),
+//                new JobPost(2, "Python Developer", "Join our team as a Python Developer. You should have experience with Django and Flask frameworks. The role involves developing and maintaining web applications using Python.", 2, Arrays.asList("Python", "Django", "Flask")),
+//                new JobPost(3, "JavaScript Developer", "We need a JavaScript Developer proficient in React and Angular. The candidate will be responsible for building dynamic and responsive web applications using JavaScript.", 2, Arrays.asList("JavaScript", "React", "Angular")),
+//                new JobPost(4, "Rust Developer", "We are looking for a skilled Rust Developer with experience in Actix and Rocket frameworks. The ideal candidate will have a strong understanding of Rust programming and be able to work on complex projects.", 2, Arrays.asList("Rust", "Actix", "Rocket")),
+//                new JobPost(5, "Go Developer", "Join our team as a Go Developer. You should have experience with Gin and Echo frameworks. The role involves developing and maintaining web applications using Go.", 2, Arrays.asList("Go", "Gin", "Echo"))));
+//
+//        jobRepository.saveAll(jobPosts);
+//    }
 
     public List<JobPost> searchJobPosts(String keyword) {
         return jobRepository.findByPostProfileContainingOrPostDescriptionContaining(keyword, keyword);

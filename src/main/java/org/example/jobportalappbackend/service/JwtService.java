@@ -22,20 +22,16 @@ import static io.jsonwebtoken.Jwts.builder;
 
 @Service
 public class JwtService {
-    // Instance variable to store the generated secret key
     private String secretKey;
 
-    // Constructor initializes the service with a new secret key
     public JwtService(){
         secretKey = generateSecretKey();
     }
 
-    // Generates a secure secret key using HmacSHA256 algorithm
     public String generateSecretKey() {
         try {
             // Create key generator for HmacSHA256
             KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-            // Generate the secret key
             SecretKey secretKey = keyGen.generateKey();
             System.out.println("Secret Key : " + secretKey.toString());
             // Convert the key to Base64 encoded string
