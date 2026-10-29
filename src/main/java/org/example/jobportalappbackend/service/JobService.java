@@ -1,52 +1,99 @@
 package org.example.jobportalappbackend.service;
 
+import org.example.jobportalappbackend.dto.JobResponse;
+import org.example.jobportalappbackend.dto.JobWriteRequest;
+import org.example.jobportalappbackend.exception.ForbiddenJobAccessException;
+import org.example.jobportalappbackend.exception.JobNotFoundException;
+import org.example.jobportalappbackend.mapper.JobMapper;
 import org.example.jobportalappbackend.model.JobPost;
 import org.example.jobportalappbackend.repository.JobRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Job use cases. Class-level {@code @Transactional(readOnly = true)} wraps every public method in a read-only
+ * transaction. Write methods declare {@code @Transactional} again, which replaces the class setting for that
+ * method (annotations are not merged) and opens a read-write transaction.
+ *
+ * <p>The owner of a job is {@code username} from the security principal. The {@code addedBy} field in the body
+ * is ignored. The previous code compared that body field to the token, so any logged-in user could overwrite
+ * someone else's job by sending their own name as {@code addedBy}.
+ */
 @Service
+@Transactional(readOnly = true)
 public class JobService {
-    @Autowired
-    private JobRepository jobRepository;
 
-    // DTO: jobPost (transfer between Controller to Service to Repository)
-    public void addJob(JobPost jobPost) {
-        jobRepository.save(jobPost);
+    private final JobRepository jobRepository;
+
+    public JobService(JobRepository jobRepository) {
+        this.jobRepository = jobRepository;
     }
 
-    public List<JobPost> getJobPosts() {
-        return jobRepository.findAll();
+    public List<JobResponse> getJobPosts() {
+        return jobRepository.findAll().stream().map(JobMapper::toResponse).toList();
     }
 
-    public JobPost getJobPost(int postId) {
-        return jobRepository.findById(postId).orElse(new JobPost());
+    public JobResponse getJobPost(int postId) {
+        return jobRepository.findWithTechStackByPostId(postId)
+                .map(JobMapper::toResponse)
+                .orElseThrow(() -> new JobNotFoundException(postId));
     }
 
-    public void updateJob(JobPost jobPost) {
-        jobRepository.save(jobPost);
+    public List<JobResponse> search(String keyword) {
+        return jobRepository.searchByKeyword(keyword).stream().map(JobMapper::toResponse).toList();
     }
 
-    public void deleteJob(int postId) {
-        jobRepository.deleteById(postId);
+    @Transactional
+    public JobResponse addJob(JobWriteRequest request, String username) {
+        JobPost job = new JobPost();
+        copyEditableFields(job, request);
+        job.setAddedBy(username);
+        return JobMapper.toResponse(jobRepository.save(job));
     }
 
-//    public void loadData() {
-//        List<JobPost> jobPosts = new ArrayList<>(Arrays.asList(
-//                new JobPost(1, "Java Developer", "We are looking for a skilled Java Developer with experience in Spring and Hibernate frameworks. The ideal candidate will have a strong understanding of Java programming and be able to work on complex projects.", 2, Arrays.asList("Java", "Spring", "Hibernate")),
-//                new JobPost(2, "Python Developer", "Join our team as a Python Developer. You should have experience with Django and Flask frameworks. The role involves developing and maintaining web applications using Python.", 2, Arrays.asList("Python", "Django", "Flask")),
-//                new JobPost(3, "JavaScript Developer", "We need a JavaScript Developer proficient in React and Angular. The candidate will be responsible for building dynamic and responsive web applications using JavaScript.", 2, Arrays.asList("JavaScript", "React", "Angular")),
-//                new JobPost(4, "Rust Developer", "We are looking for a skilled Rust Developer with experience in Actix and Rocket frameworks. The ideal candidate will have a strong understanding of Rust programming and be able to work on complex projects.", 2, Arrays.asList("Rust", "Actix", "Rocket")),
-//                new JobPost(5, "Go Developer", "Join our team as a Go Developer. You should have experience with Gin and Echo frameworks. The role involves developing and maintaining web applications using Go.", 2, Arrays.asList("Go", "Gin", "Echo"))));
-//
-//        jobRepository.saveAll(jobPosts);
-//    }
+    @Transactional
+    public JobResponse updateJob(JobWriteRequest request, String username) {
+        if (request.postId() == null || request.postId() < 1) {
+            throw new IllegalArgumentException("postId is required to update a job");
+        }
+        JobPost existing = jobRepository.findWithTechStackByPostId(request.postId())
+                .orElseThrow(() -> new JobNotFoundException(request.postId()));
+        requireOwner(existing, username, "You are not authorized to edit this job post");
+        copyEditableFields(existing, request);
+        // addedBy stays as it was stored. A client cannot reassign the job by editing the body.
+        return JobMapper.toResponse(jobRepository.save(existing));
+    }
 
-    public List<JobPost> searchJobPosts(String keyword) {
-        return jobRepository.findByPostProfileContainingOrPostDescriptionContaining(keyword, keyword);
+    @Transactional
+    public void deleteJob(int postId, String username) {
+        JobPost existing = jobRepository.findWithTechStackByPostId(postId)
+                .orElseThrow(() -> new JobNotFoundException(postId));
+        requireOwner(existing, username, "You are not authorized to delete this job post");
+        jobRepository.delete(existing);
+    }
+
+    /**
+     * Mutates the persistent collection in place. Replacing the list with a brand-new instance sometimes
+     * leaves the old {@code job_post_tech_stack} rows behind, because Hibernate is tracking the collection
+     * object it loaded. Clearing and adding tells it exactly which elements changed.
+     */
+    private void copyEditableFields(JobPost job, JobWriteRequest request) {
+        job.setPostProfile(request.postProfile());
+        job.setPostDescription(request.postDescription());
+        job.setRequiredExperience(request.requiredExperience());
+        if (job.getPostTechStack() == null) {
+            job.setPostTechStack(new ArrayList<>());
+        }
+        job.getPostTechStack().clear();
+        job.getPostTechStack().addAll(request.postTechStack());
+    }
+
+    private void requireOwner(JobPost job, String username, String message) {
+        if (!username.equals(job.getAddedBy())) {
+            throw new ForbiddenJobAccessException(message);
+        }
     }
 }
